@@ -1,0 +1,17 @@
+{
+  "name": "streetfood",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd backend && npm run dev",
+    "client": "cd frontend && npm start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  }
+}
