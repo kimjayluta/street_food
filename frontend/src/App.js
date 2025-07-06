@@ -2,8 +2,6 @@ import React from 'react';
 import SalesLogsApp from './SalesLogsApp';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { StagewiseToolbar } from '@stagewise/toolbar-react';
-import { stagewiseToolbarConfig } from './stagewiseToolbarConfig';
 
 // Import Roboto font if you installed @fontsource/roboto
 import '@fontsource/roboto/300.css';
@@ -22,7 +20,6 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <StagewiseToolbar config={stagewiseToolbarConfig} />
       <SalesLogsApp />
     </ThemeProvider>
   );

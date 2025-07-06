@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Edit, Trash2, Filter, Store, User, Package, ChevronDown } from 'lucide-react';
 import {
@@ -130,7 +129,7 @@ export default function SalesLogsApp() {
 
   const fetchExpenses = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/expenses');
+      const response = await axios.get('http://192.168.254.173:3000/expenses');
       setExpenses(response.data);
     } catch (error) {
       showToast('Error fetching expenses', 'error');
@@ -164,10 +163,10 @@ export default function SalesLogsApp() {
       };
 
       if (editingExpenseId) {
-        await axios.put(`http://localhost:3000/expenses/${editingExpenseId}`, submitData);
+        await axios.put(`http://192.168.254.173:3000/expenses/${editingExpenseId}`, submitData);
         showToast('Expense updated successfully!');
       } else {
-        await axios.post('http://localhost:3000/expenses', submitData);
+        await axios.post('http://192.168.254.173:3000/expenses', submitData);
         showToast('Expense added successfully!');
       }
 
@@ -194,7 +193,7 @@ export default function SalesLogsApp() {
       return;
     }
     try {
-      await axios.delete(`http://localhost:3000/expenses/${id}`);
+      await axios.delete(`http://192.168.254.173:3000/expenses/${id}`);
       showToast('Expense deleted successfully!');
       fetchExpenses();
     } catch (error) {
@@ -206,6 +205,17 @@ export default function SalesLogsApp() {
     setShowExpenseModal(false);
     resetExpenseForm();
   };
+
+  // --- Optimization: Move filteredLogs and filteredExpenses outside of render, and memoize paninda lookup ---
+
+  // Memoize paninda lookup map for fast access
+  const panindaMap = useMemo(() => {
+    const map = {};
+    panindaList.forEach((p) => { map[p.id] = p; });
+    return map;
+  }, [panindaList]);
+
+  // --- Revert: Restore original filteredLogs and filteredExpenses logic ---
 
   const filteredExpenses = useMemo(() => {
     if (!form.filter_pwesto) return [];
@@ -243,6 +253,38 @@ export default function SalesLogsApp() {
       return true;
     });
   }, [expenses, form.filter_pwesto, form.filter_startDate, form.filter_endDate]);
+
+  const filteredLogs = useMemo(() => {
+    if (!form.filter_pwesto) return [];
+
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+
+    return salesLogs.filter((log) => {
+      if (log.pwesto_id != form.filter_pwesto) {
+        return false;
+      }
+      if (!log.date) return false;
+      const logDate = new Date(log.date);
+      const logDateStr = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, '0')}-${String(
+        logDate.getDate()
+      ).padStart(2, '0')}`;
+
+      if (!form.filter_startDate && !form.filter_endDate) {
+        return logDateStr === todayStr;
+      }
+      if (form.filter_startDate) {
+        if (logDateStr < form.filter_startDate) return false;
+      }
+      if (form.filter_endDate) {
+        if (logDateStr > form.filter_endDate) return false;
+      }
+      return true;
+    });
+  }, [salesLogs, form.filter_pwesto, form.filter_startDate, form.filter_endDate]);
 
   useEffect(() => {
     if (form.paninda_id && itemPrices[form.paninda_id]) {
@@ -314,10 +356,10 @@ export default function SalesLogsApp() {
     try {
       setLoading(true);
       const [pwesto, tindera, paninda, sales] = await Promise.all([
-        axios.get('http://localhost:3000/pwesto'),
-        axios.get('http://localhost:3000/tindera'),
-        axios.get('http://localhost:3000/paninda'),
-        axios.get('http://localhost:3000/sales_logs'),
+        axios.get('http://192.168.254.173:3000/pwesto'),
+        axios.get('http://192.168.254.173:3000/tindera'),
+        axios.get('http://192.168.254.173:3000/paninda'),
+        axios.get('http://192.168.254.173:3000/sales_logs'),
       ]);
 
       setPwestoList(pwesto.data);
@@ -378,10 +420,10 @@ export default function SalesLogsApp() {
       };
 
       if (editingId) {
-        await axios.put(`http://localhost:3000/sales_logs/${editingId}`, submitData);
+        await axios.put(`http://192.168.254.173:3000/sales_logs/${editingId}`, submitData);
         showToast('Sales log updated successfully!');
       } else {
-        await axios.post('http://localhost:3000/sales_logs', submitData);
+        await axios.post('http://192.168.254.173:3000/sales_logs', submitData);
         showToast('Sales log added successfully!');
       }
 
@@ -417,7 +459,7 @@ export default function SalesLogsApp() {
 
     try {
       setLoading(true);
-      await axios.delete(`http://localhost:3000/sales_logs/${id}`);
+      await axios.delete(`http://192.168.254.173:3000/sales_logs/${id}`);
       showToast('Sales log deleted successfully!');
       fetchAll();
     } catch (error) {
@@ -431,38 +473,6 @@ export default function SalesLogsApp() {
     setShowModal(false);
     resetForm();
   };
-
-  const filteredLogs = useMemo(() => {
-    if (!form.filter_pwesto) return [];
-
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    const todayStr = `${yyyy}-${mm}-${dd}`;
-
-    return salesLogs.filter((log) => {
-      if (log.pwesto_id != form.filter_pwesto) {
-        return false;
-      }
-      if (!log.date) return false;
-      const logDate = new Date(log.date);
-      const logDateStr = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, '0')}-${String(
-        logDate.getDate()
-      ).padStart(2, '0')}`;
-
-      if (!form.filter_startDate && !form.filter_endDate) {
-        return logDateStr === todayStr;
-      }
-      if (form.filter_startDate) {
-        if (logDateStr < form.filter_startDate) return false;
-      }
-      if (form.filter_endDate) {
-        if (logDateStr > form.filter_endDate) return false;
-      }
-      return true;
-    });
-  }, [salesLogs, form.filter_pwesto, form.filter_startDate, form.filter_endDate]);
 
   const selectedPwestoInfo = form.filter_pwesto
     ? (() => {
@@ -615,9 +625,9 @@ export default function SalesLogsApp() {
                 <TableHead>
                   <TableRow>
                     <TableCell>Item</TableCell>
-                    <TableCell>Quantity</TableCell>
-                    <TableCell>Leftover</TableCell>
-                    <TableCell>Total Sales</TableCell>
+                    <TableCell>Dara</TableCell>
+                    <TableCell>Tada</TableCell>
+                    <TableCell>Amount</TableCell>
                     <TableCell>Date</TableCell>
                     <TableCell>Actions</TableCell>
                   </TableRow>
@@ -626,7 +636,7 @@ export default function SalesLogsApp() {
                   {filteredLogs.length > 0 ? (
                     filteredLogs.map((log) => (
                       <TableRow key={log.id}>
-                        <TableCell>{panindaList.find((p) => p.id == log.paninda_id)?.item_name}</TableCell>
+                        <TableCell>{panindaMap[log.paninda_id]?.item_name}</TableCell>
                         <TableCell>{log.quantity}</TableCell>
                         <TableCell>{log.leftover || 0}</TableCell>
                         <TableCell>₱{parseFloat(log.total_sales).toFixed(2)}</TableCell>
@@ -826,7 +836,7 @@ export default function SalesLogsApp() {
                         <Grid item xs={6}>
                           <TextField
                             name="quantity"
-                            label="Quantity"
+                            label="Dara"
                             type="number"
                             value={form.quantity}
                             onChange={handleChange}
@@ -836,7 +846,7 @@ export default function SalesLogsApp() {
                         <Grid item xs={6}>
                           <TextField
                             name="leftover"
-                            label="Leftover"
+                            label="Tada"
                             type="number"
                             value={form.leftover}
                             onChange={handleChange}
@@ -846,7 +856,7 @@ export default function SalesLogsApp() {
                       </Grid>
                       <TextField
                         name="total_sales"
-                        label="Total Sales"
+                        label="Total Amount"
                         value={form.total_sales}
                         fullWidth
                         disabled
